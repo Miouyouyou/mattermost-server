@@ -19,8 +19,11 @@ jobs:
         go-version: 1.13
       id: go
 
+    - name: Get the webapp
+      run: git clone --depth 1 https://github.com/Miouyouyou/mattermost-webapp && mv mattermost-webapp ../
+      
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
     - name: Package
-      run: make package
+      run: ls -l && make package
