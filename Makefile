@@ -2,11 +2,7 @@
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-ifeq ($(OS),Windows_NT)
-	PLATFORM := Windows
-else
-	PLATFORM := $(shell uname)
-endif
+PLATFORM := $(shell uname)
 
 IS_CI ?= false
 MM_NO_DOCKER ?= false
@@ -19,7 +15,7 @@ ifeq ($(BUILD_NUMBER),)
 	BUILD_NUMBER := dev
 endif
 BUILD_ENTERPRISE_DIR ?= ../enterprise
-BUILD_ENTERPRISE ?= true
+BUILD_ENTERPRISE ?= false
 BUILD_ENTERPRISE_READY = false
 BUILD_TYPE_NAME = team
 BUILD_HASH_ENTERPRISE = none
@@ -85,37 +81,18 @@ TESTS=.
 TE_PACKAGES=$(shell $(GO) list ./...)
 
 # Plugins Packages
-PLUGIN_PACKAGES?=mattermost-plugin-zoom-v1.3.0
-PLUGIN_PACKAGES += mattermost-plugin-autolink-v1.1.2
-PLUGIN_PACKAGES += mattermost-plugin-nps-v1.0.3
+PLUGIN_PACKAGES ?= mattermost-plugin-autolink-v1.1.2
 PLUGIN_PACKAGES += mattermost-plugin-custom-attributes-v1.0.2
 PLUGIN_PACKAGES += mattermost-plugin-github-v0.11.0
 PLUGIN_PACKAGES += mattermost-plugin-welcomebot-v1.1.1
-PLUGIN_PACKAGES += mattermost-plugin-aws-SNS-v1.0.2
-PLUGIN_PACKAGES += mattermost-plugin-antivirus-v0.1.2
 PLUGIN_PACKAGES += mattermost-plugin-jira-v2.3.2
 PLUGIN_PACKAGES += mattermost-plugin-gitlab-v1.0.1
-PLUGIN_PACKAGES += mattermost-plugin-jenkins-v1.0.0
 
 
 # Prepares the enterprise build if exists. The IGNORE stuff is a hack to get the Makefile to execute the commands outside a target
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-	IGNORE:=$(shell echo Enterprise build selected, preparing)
-	IGNORE:=$(shell rm -f imports/imports.go)
-	IGNORE:=$(shell cp $(BUILD_ENTERPRISE_DIR)/imports/imports.go imports/)
-	IGNORE:=$(shell rm -f enterprise)
-	IGNORE:=$(shell ln -s $(BUILD_ENTERPRISE_DIR) enterprise)
-else
-	IGNORE:=$(shell rm -f imports/imports.go)
-endif
+IGNORE:=$(shell rm -f imports/imports.go)
 
-EE_PACKAGES=$(shell $(GO) list ./enterprise/...)
-
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-ALL_PACKAGES=$(TE_PACKAGES) $(EE_PACKAGES)
-else
 ALL_PACKAGES=$(TE_PACKAGES)
-endif
 
 # Decide what version of prebuilt binaries to download. This will use the release-* branch names or change to the latest.
 MMCTL_REL_TO_DOWNLOAD = $(shell scripts/get_latest_release.sh 'mattermost/mmctl' 'release-')
@@ -171,17 +148,9 @@ prepackaged-binaries: ## Populate the prepackaged-binaries to the bin directory
 # Externally built binaries
 ifeq ($(shell test -f bin/mmctl && printf "yes"),yes)
 	@echo mmctl installed
-else ifeq ($(PLATFORM),Darwin)
-	@echo Downloading prepackaged binary: https://github.com/mattermost/mmctl/releases/$(MMCTL_REL_TO_DOWNLOAD)
-	@MMCTL_FILE="darwin_amd64.tar" && curl -f -O -L https://github.com/mattermost/mmctl/releases/download/$(MMCTL_REL_TO_DOWNLOAD)/$$MMCTL_FILE && tar -xvf $$MMCTL_FILE -C bin && rm $$MMCTL_FILE
-else ifeq ($(PLATFORM),Linux)
+else
 	@echo Downloading prepackaged binary: https://github.com/mattermost/mmctl/releases/$(MMCTL_REL_TO_DOWNLOAD)
 	@MMCTL_FILE="linux_amd64.tar" && curl -f -O -L https://github.com/mattermost/mmctl/releases/download/$(MMCTL_REL_TO_DOWNLOAD)/$$MMCTL_FILE && tar -xvf $$MMCTL_FILE -C bin && rm $$MMCTL_FILE
-else ifeq ($(PLATFORM),Windows)
-	@echo Downloading prepackaged binary: https://github.com/mattermost/mmctl/releases/$(MMCTL_REL_TO_DOWNLOAD)
-	@MMCTL_FILE="windows_amd64.zip" && curl -f -O -L https://github.com/mattermost/mmctl/releases/download/$(MMCTL_REL_TO_DOWNLOAD)/$$MMCTL_FILE && unzip -o $$MMCTL_FILE -d bin && rm $$MMCTL_FILE
-else
-	@echo "mmctl error: can't detect OS"
 endif
 
 golangci-lint: ## Run golangci-lint on codebase
@@ -193,11 +162,6 @@ golangci-lint: ## Run golangci-lint on codebase
 
 	@echo Running golangci-lint
 	golangci-lint run ./...
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-ifneq ($(MM_NO_ENTERPRISE_LINT),true)
-	golangci-lint run ./enterprise/...
-endif
-endif
 
 app-layers: ## Extract interface from App struct
 	env GO111MODULE=off $(GO) get gopkg.in/reflog/struct2interface.v0
@@ -315,13 +279,8 @@ endif
 	./scripts/test.sh "$(GO)" "$(GOFLAGS)" "$(ALL_PACKAGES)" "$(TESTS)" "$(TESTFLAGS)" "$(GOBIN)"
 
 test-server-quick: ## Runs only quick tests.
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-	@echo Running all tests
-	$(GO) test $(GOFLAGS) -short $(ALL_PACKAGES)
-else
 	@echo Running only TE tests
 	$(GO) test $(GOFLAGS) -short $(TE_PACKAGES)
-endif
 
 internal-test-web-client: ## Runs web client tests.
 	$(GO) run $(GOFLAGS) $(PLATFORM_FILES) test web_client_tests
@@ -412,10 +371,6 @@ run-fullmap: run-server run-client ## Legacy alias to run
 stop-server: ## Stops the server.
 	@echo Stopping mattermost
 
-ifeq ($(BUILDER_GOOS_GOARCH),"windows_amd64")
-	wmic process where "Caption='go.exe' and CommandLine like '%go.exe run%'" call terminate
-	wmic process where "Caption='mattermost.exe' and CommandLine like '%go-build%'" call terminate
-else
 	@for PID in $$(ps -ef | grep "[g]o run" | grep "disableconfigwatch" | awk '{ print $$2 }'); do \
 		echo stopping go $$PID; \
 		kill $$PID; \
@@ -424,7 +379,6 @@ else
 		echo stopping mattermost $$PID; \
 		kill $$PID; \
 	done
-endif
 
 stop-client: ## Stops the webapp.
 	@echo Stopping mattermost client
@@ -524,23 +478,12 @@ vet: ## Run mattermost go vet specific checks
 		echo "MM_VET_OPENSPEC_PATH not set or spec yaml path in it is incorrect. Skipping API check"; \
 	fi; \
 	$(GO) vet -vettool=$(GOBIN)/mattermost-govet $$VET_CMD ./...
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-ifneq ($(MM_NO_ENTERPRISE_LINT),true)
-	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -enterpriseLicense -structuredLogging -tFatal ./enterprise/...
-endif
-endif
 
 todo: ## Display TODO and FIXME items in the source code.
 	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime TODO
 	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime XXX
 	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime FIXME
 	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime "FIX ME"
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime TODO enterprise/
-	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime XXX enterprise/
-	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime FIXME enterprise/
-	@! ag --ignore Makefile --ignore-dir vendor --ignore-dir runtime "FIX ME" enterprise/
-endif
 
 ## Help documentatin à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
