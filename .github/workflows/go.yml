@@ -20,10 +20,10 @@ jobs:
       id: go
 
     - name: Get the webapp
-      run: git clone --depth 1 https://github.com/Miouyouyou/mattermost-webapp && mv mattermost-webapp ../
+      run: echo $PWD && git clone --depth 1 https://github.com/Miouyouyou/mattermost-webapp && mv mattermost-webapp ../ && echo "Done !"
       
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
     - name: Package
-      run: ls -l && make package
+      run: echo $PWD && ls -l ../ && make package
