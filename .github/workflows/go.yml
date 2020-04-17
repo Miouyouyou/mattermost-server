@@ -26,5 +26,5 @@ jobs:
       run: |
         echo $PWD &&
         ls -l ../ &&
-        make package &&
+        make build package &&
         echo "Done !"
