@@ -58,7 +58,7 @@ package:
 	mkdir -p tmpprepackaged
 	@cd tmpprepackaged && for plugin_package in $(PLUGIN_PACKAGES) ; do \
 		for ARCH in "linux-amd64" ; do \
-			echo "Downloading https://plugins-store.test.mattermost.com/release/$$plugin_package-$$ARCH.tar.gz;"
+			echo "Downloading https://plugins-store.test.mattermost.com/release/$$plugin_package-$$ARCH.tar.gz"; \
 			curl -f -O -L https://plugins-store.test.mattermost.com/release/$$plugin_package-$$ARCH.tar.gz; \
 			curl -f -O -L https://plugins-store.test.mattermost.com/release/$$plugin_package-$$ARCH.tar.gz.sig; \
 		done; \
