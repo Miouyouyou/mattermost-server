@@ -19,16 +19,6 @@ jobs:
         go-version: 1.13
       id: go
 
-    - name: Build the webapp
-      run: |
-        echo $PWD &&
-        git clone --depth 1 https://github.com/Miouyouyou/mattermost-webapp &&
-        mv mattermost-webapp ../ &&
-        cd ../mattermost-webapp &&
-        make build &&
-        ls -l &&
-        echo "Done !"
-      
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 

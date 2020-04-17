@@ -42,9 +42,9 @@ package:
 	sed -i'' -e 's|"SMTPServer": "localhost",|"SMTPServer": "",|g' $(DIST_PATH)/config/config.json
 	sed -i'' -e 's|"SMTPPort": "2500",|"SMTPPort": "",|g' $(DIST_PATH)/config/config.json
 
-	@# Package webapp
-	mkdir -p $(DIST_PATH)/client
-	cp -RL $(BUILD_WEBAPP_DIR)/dist/* $(DIST_PATH)/client
+	#@# Package webapp
+	#mkdir -p $(DIST_PATH)/client
+	#cp -RL $(BUILD_WEBAPP_DIR)/dist/* $(DIST_PATH)/client
 
 	@# Help files
 	cp build/MIT-COMPILED-LICENSE.md $(DIST_PATH)
