@@ -13,7 +13,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: alpine-latest
     
     strategy:
       matrix:
@@ -44,7 +44,8 @@ jobs:
         echo $PWD &&
         ls -l ../ &&
         make build build-client package &&
-        cp dist/*linux-amd64.tar.gz /tmp/mattermost-build.tar.gz &&
+        mkdir -p /tmp/build &&
+        cp dist/mattermost-team-linux-amd64.tar.gz /tmp/build/ &&
         echo "Done !"
     
     - name: Create an artifact with the dist dir
@@ -55,12 +56,13 @@ jobs:
 
     - name: Get the Docker build image
       run: |
-        cd /tmp &&
-        wget https://gist.githubusercontent.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/fe15ce785b8691785b4614c5c199aaba0b9180e2/Dockerfile
+        cd /tmp/build &&
+        wget https://gist.github.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/3427a8bde2b13ff2048ac4da137b858efae946bd/Dockerfile &&
+        wget https://gist.github.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/3427a8bde2b13ff2048ac4da137b858efae946bd/entrypoint.sh
     
     - name: Build the Docker image
       run: |
-        cd /tmp &&
+        cd /tmp/build &&
         docker build . --file Dockerfile --tag image
     
     - name: Log into registry
