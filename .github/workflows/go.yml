@@ -6,25 +6,74 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  IMAGE_NAME: myy-mattermost
+
 jobs:
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    steps:
+    
+    strategy:
+      matrix:
+        node-version: [ 12.x ]
 
-    - name: Set up Go 1.13
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+      
+    - name: Preparing Node ${{ matrix.node-version }} for the webclient build
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }
+    
+    - name: Checking out the client
+      run: |
+        cd .. &&
+        git clone --depth 1 https://github.com/Miouyouyou/mattermost-webapp
+    
+    - name: Set up Go 1.13 for the server build
       uses: actions/setup-go@v1
       with:
         go-version: 1.13
       id: go
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-
-    - name: Package
+    - name: Build and package the server
       run: |
         echo $PWD &&
         ls -l ../ &&
-        make build package &&
+        make build build-client package &&
+        cp dist/*linux-amd64.tar.gz /tmp/mattermost-build.tar.gz &&
         echo "Done !"
+    
+    - name: Generate a Docker image !
+      run: |
+        cd /tmp &&
+        wget https://gist.githubusercontent.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/fe15ce785b8691785b4614c5c199aaba0b9180e2/Dockerfile &&
+        docker build . --file Dockerfile --tag image
+    
+    - name: Log into registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+    - name: Push image
+      run: |
+        IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+        # Strip "v" prefix from tag name
+        [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+
+        docker tag image $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
