@@ -26,7 +26,7 @@ jobs:
     - name: Preparing Node ${{ matrix.node-version }} for the webclient build
       uses: actions/setup-node@v1
       with:
-        node-version: ${{ matrix.node-version }
+        node-version: ${{ matrix.node-version }}
     
     - name: Checking out the client
       run: |
