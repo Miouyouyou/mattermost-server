@@ -47,10 +47,20 @@ jobs:
         cp dist/*linux-amd64.tar.gz /tmp/mattermost-build.tar.gz &&
         echo "Done !"
     
-    - name: Generate a Docker image !
+    - name: Create an artifact with the dist dir
+      uses: actions/upload-artifact@v1
+      with:
+        name: mattermost-build
+        path: dist
+
+    - name: Get the Docker build image
       run: |
         cd /tmp &&
-        wget https://gist.githubusercontent.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/fe15ce785b8691785b4614c5c199aaba0b9180e2/Dockerfile &&
+        wget https://gist.githubusercontent.com/Miouyouyou/1157f6e8f77082949fe7e1a5ee5760e7/raw/fe15ce785b8691785b4614c5c199aaba0b9180e2/Dockerfile
+    
+    - name: Build the Docker image
+      run: |
+        cd /tmp &&
         docker build . --file Dockerfile --tag image
     
     - name: Log into registry
